@@ -53,7 +53,7 @@ installed: it runs everywhere an engine runs, the server engine included.
    key derivation function, PBKDF2 qualifies and Argon2id does not.
 
 The weakest use is a high-value password store where you control both ends
-and can install a native library: there Argon2id is the better hash.
+and can install a native library: there Argon2id is the better hash. For an Argon2id xTalk extension see https://github.com/SethMorrowSoftware/SodiumXT
 
 ### A note on JWTs in desktop apps
 
