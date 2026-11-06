@@ -1,0 +1,21 @@
+<?lc
+-- Runner for LiveCode Server / HyperXTalk Server. Run from the repository root:
+--
+--    <server-engine> tests/run-tests.lc
+--
+-- The same two stacks the IDE runner loads, via "start using", with no
+-- changes: a script-only library works identically under the server engine.
+
+try
+   start using stack "libPBKDF2.livecodescript"
+   start using stack "tests/libPBKDF2Tests.livecodescript"
+   set the script of stack "libPBKDF2" to the script of stack "libPBKDF2"
+   set the script of stack "libPBKDF2Tests" to the script of stack "libPBKDF2Tests"
+catch tError
+   put "LOAD ERROR:" && tError & return
+   put "RESULT: FAIL (load error)" & return
+   exit to top
+end try
+
+put pbkdf2RunTests("tests/vectors.txt") & return
+?>
