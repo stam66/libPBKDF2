@@ -10,17 +10,62 @@ engines has.
 
 ## When you want PBKDF2 rather than Argon2id
 
-Argon2id is the better password hash when you control both ends. PBKDF2 is
-what you need when you have to match something you do not control:
+Argon2id is the better password hash when you control both ends and a native
+library (for example SodiumXT) is available. PBKDF2 is what you need when you
+have to match something you do not control, or when nothing native can be
+installed: it runs everywhere an engine runs, the server engine included.
 
-- stored hashes made by Xojo (`Crypto.PBKDF2`), .NET (`Rfc2898DeriveBytes`),
-  Java (`PBKDF2WithHmacSHA256`), Python (`hashlib.pbkdf2_hmac`, passlib),
-  PHP (`hash_pbkdf2`), Node or browser WebCrypto;
-- a users table shared with another application;
-- NIST SP 800-132 or FIPS requirements;
-- file and protocol formats that derive keys with PBKDF2 (WPA2, encrypted PDF
-  and ZIP, older KeePass databases, LUKS1, iOS and Android backups);
-- servers where Argon2id's tens of megabytes per hash are not available.
+## Use cases, ranked by what the library buys you
+
+1. **Server-side password storage in an xTalk API.** Any HyperXTalk or
+   LiveCode Server endpoint with a users table needs salted, slow hashing.
+   `pbkdf2HashPassword` and `pbkdf2VerifyPassword` give a self-describing
+   string, a fresh salt each time, and `pbkdf2NeedsRehash` to raise the cost
+   later. The 100,000 round default is a usable baseline on a VPS.
+
+2. **Verifying hashes another system wrote.** A users table shared with a
+   Xojo (`Crypto.PBKDF2`), .NET (`Rfc2898DeriveBytes`), Java
+   (`PBKDF2WithHmacSHA256`), Python (`hashlib.pbkdf2_hmac`, passlib) or PHP
+   (`hash_pbkdf2`) application, or a migration from one. Those runtimes all
+   ship PBKDF2 and most do not ship Argon2id, so PBKDF2 is the format you
+   inherit. `pbkdf2DeriveHex` with the same digest, count, salt bytes and
+   length reproduces their output exactly; passlib strings verify directly.
+
+3. **Passphrase to encryption key in a desktop app.** The engine's own
+   `encrypt ... with password` derives its key with a single weak hash. Derive
+   a 32-byte key with `pbkdf2Derive`, store the salt and round count beside
+   the ciphertext, and use `encrypt ... with key`. This is the main desktop
+   use, and the one where the library fixes a real weakness in the stock
+   engine.
+
+4. **Formats that mandate PBKDF2.** Encrypted ZIP and PDF, WPA2 passphrases,
+   older KeePass databases, iOS and Android backup containers, LUKS1. A tool
+   that opens or produces any of those needs the exact algorithm with a chosen
+   PRF and count, not a hash of its own design.
+
+5. **HMAC for everything else.** `pbkdf2Hmac` is a general RFC 2104 HMAC,
+   which the engine does not offer. That covers JWT HS256 signing, webhook
+   signature checks (Stripe, GitHub, Slack), request signing for cloud APIs,
+   and integrity tags on files you write. It is likely the most-called
+   handler once the library is in a project.
+
+6. **Compliance.** Where a checklist says NIST SP 800-132 or a FIPS-approved
+   key derivation function, PBKDF2 qualifies and Argon2id does not.
+
+The weakest use is a high-value password store where you control both ends
+and can install a native library: there Argon2id is the better hash.
+
+### A note on JWTs in desktop apps
+
+`pbkdf2Hmac` makes HS256 JWTs easy, so it is worth saying where they belong.
+In a desktop app the sound uses are as a *client* of a remote API (store the
+token the server issued, send it in the Authorization header, check `exp`),
+or as a short-lived handshake between components you both own. An HMAC secret
+compiled into a distributed app can be extracted, so a desktop app must never
+be the verifier of tokens it also holds the secret for: licence files need an
+asymmetric signature (RS256, ES256 or ed25519), which this library does not
+provide. Local login should use a password hash, not a token, and a cached
+JWT cannot be revoked without a round trip to the server.
 
 ## Install
 
